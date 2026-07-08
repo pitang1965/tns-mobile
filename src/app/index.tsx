@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { spotEventProps, track } from '@/analytics/analytics';
 import type { SpotType, SpotV1 } from '@/api/spots';
 import { NoticeBanner } from '@/components/notice-banner';
+import { QuickFilterChips } from '@/components/quick-filter-chips';
 import { SegmentToggle, type ViewMode } from '@/components/segment-toggle';
 import { SpotCard } from '@/components/spot-card';
 import { SpotList } from '@/components/spot-list';
@@ -13,6 +14,10 @@ import { SpotsMap } from '@/components/spots-map';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TypeFilterChips } from '@/components/type-filter-chips';
+import {
+  QuickFilterPredicates,
+  type QuickFilterKey,
+} from '@/constants/quick-filters';
 import { AllSpotTypes } from '@/constants/spot-types';
 import { Spacing } from '@/constants/theme';
 import { useCurrentLocation } from '@/hooks/use-current-location';
@@ -41,6 +46,8 @@ export default function NearbySpotsScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('map');
   // 初期値は全種別ON。selectedTypesは表示する種別のホワイトリスト
   const [selectedTypes, setSelectedTypes] = useState<SpotType[]>(() => [...AllSpotTypes]);
+  // クイック絞り込みは起動ごとに全OFF(全件表示)から始める。永続化しない
+  const [quickFilters, setQuickFilters] = useState<QuickFilterKey[]>([]);
   const [region, setRegion] = useState<Region>(JAPAN_REGION);
   const [selectedSpot, setSelectedSpot] = useState<SpotV1 | null>(null);
 
@@ -57,8 +64,29 @@ export default function NearbySpotsScreen() {
       return [];
     }
     const active = new Set(selectedTypes);
-    return spots.filter((spot) => active.has(spot.type));
-  }, [spots, selectedTypes]);
+    const predicates = quickFilters.map((key) => QuickFilterPredicates[key]);
+    return spots.filter(
+      (spot) => active.has(spot.type) && predicates.every((matches) => matches(spot)),
+    );
+  }, [spots, selectedTypes, quickFilters]);
+
+  // 絞り込みが効いている状態で地図の表示範囲内が0件のときだけ知らせる。
+  // 空の地図が「壊れた・データがない」と誤解されるのを防ぐ(一覧には既存の空表示がある)
+  const filtersActive =
+    quickFilters.length > 0 || selectedTypes.length < AllSpotTypes.length;
+  const emptyInRegion = useMemo(() => {
+    if (!filtersActive) {
+      return false;
+    }
+    const west = region.longitude - region.longitudeDelta / 2;
+    const east = region.longitude + region.longitudeDelta / 2;
+    const south = region.latitude - region.latitudeDelta / 2;
+    const north = region.latitude + region.latitudeDelta / 2;
+    return !filteredSpots.some((spot) => {
+      const [lng, lat] = spot.coordinates;
+      return lng >= west && lng <= east && lat >= south && lat <= north;
+    });
+  }, [filtersActive, filteredSpots, region]);
 
   const sortedItems = useMemo(
     () =>
@@ -77,7 +105,13 @@ export default function NearbySpotsScreen() {
   const changeTypes = (types: SpotType[]) => {
     setSelectedTypes(types);
     setSelectedSpot(null);
-    track({ name: 'filter_changed', properties: { types } });
+    track({ name: 'filter_changed', properties: { types, quick: quickFilters } });
+  };
+
+  const changeQuickFilters = (keys: QuickFilterKey[]) => {
+    setQuickFilters(keys);
+    setSelectedSpot(null);
+    track({ name: 'filter_changed', properties: { types: selectedTypes, quick: keys } });
   };
 
   const selectSpot = (spot: SpotV1 | null) => {
@@ -101,7 +135,11 @@ export default function NearbySpotsScreen() {
         </View>
 
         <TypeFilterChips selected={selectedTypes} onChange={changeTypes} />
+        <QuickFilterChips selected={quickFilters} onChange={changeQuickFilters} />
 
+        {viewMode === 'map' && !isLoading && !loadFailed && emptyInRegion && (
+          <NoticeBanner tone="info" text="条件に合うスポットがこの範囲にありません" />
+        )}
         {staleDays != null && (
           <NoticeBanner
             tone="warning"

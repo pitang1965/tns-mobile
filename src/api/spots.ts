@@ -21,7 +21,7 @@ export type SpotV1 = {
   pricePerNight?: number;
   isOvernightProhibited: boolean;
   elevation: number; // meters
-  distanceToToilet?: number; // meters(充足率~55%、欠損前提で表示する)
+  distanceToToilet?: number; // meters(欠損あり。表示・絞り込みとも欠損前提で扱う)
   distanceToConvenience?: number; // meters
   distanceToBath?: number; // meters
 };

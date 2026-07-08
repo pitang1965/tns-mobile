@@ -25,25 +25,30 @@ type ClusterMarkerPoolProps = {
   onPress: (cluster: ClusterData) => void;
 };
 
-// クラスタを位置ベースの決定的ハッシュでスロットへ割り当てる。
-// 配列順で詰めると、パンやズームのたびに別クラスタが同じスロットに載り、
+// アイテムを位置ベースの決定的ハッシュでスロットへ割り当てる。
+// 配列順で詰めると、パンやズームのたびに別アイテムが同じスロットに載り、
 // ほぼ同じ位置の◯の数字がその場で化けて見える(④→②など)。
-// 同じ場所のクラスタが常に同じスロットに載れば、この見かけの誤りが消える
-function assignSlots(clusters: ClusterData[], poolSize: number): (ClusterData | null)[] {
-  const slots: (ClusterData | null)[] = Array.from({ length: poolSize }, () => null);
-  for (const cluster of clusters) {
+// 同じ場所のアイテムが常に同じスロットに載れば、この見かけの誤りが消える
+function assignSlots<T>(
+  items: T[],
+  poolSize: number,
+  positionOf: (item: T) => { latitude: number; longitude: number },
+): (T | null)[] {
+  const slots: (T | null)[] = Array.from({ length: poolSize }, () => null);
+  for (const item of items) {
+    const { latitude, longitude } = positionOf(item);
     // 約500m格子に丸めた座標のハッシュ。中心が多少動いても同じスロットに留まる
     const hash = Math.abs(
-      Math.round(cluster.latitude * 200) * 92821 + Math.round(cluster.longitude * 200) * 31,
+      Math.round(latitude * 200) * 92821 + Math.round(longitude * 200) * 31,
     );
     let slot = hash % poolSize;
-    // 衝突は線形探索で空きへ。呼び出し側がpoolSize > clusters.lengthを保証するが、
+    // 衝突は線形探索で空きへ。呼び出し側がpoolSize > items.lengthを保証するが、
     // 万一空きが無くても無限ループしないよう探索回数を上限で打ち切る
     for (let probe = 0; probe < poolSize && slots[slot] != null; probe++) {
       slot = (slot + 1) % poolSize;
     }
     if (slots[slot] == null) {
-      slots[slot] = cluster;
+      slots[slot] = item;
     }
   }
   return slots;
@@ -109,7 +114,7 @@ function StaticClusterPool({ label, clusters, onPress }: StaticClusterPoolProps)
     return null;
   }
 
-  const slots = assignSlots(clusters, effectivePoolSize);
+  const slots = assignSlots(clusters, effectivePoolSize, (cluster) => cluster);
   const size = labelSize(label);
 
   return (
@@ -143,6 +148,85 @@ function StaticClusterPool({ label, clusters, onPress }: StaticClusterPoolProps)
           </Marker>
         );
       })}
+    </>
+  );
+}
+
+// 個別ピンも◯と同じプール方式にする。素のMarkerをmapで並べると、
+// フィルタでスポットが除外されたときのアンマウントで削除が取りこぼされ(#5736)、
+// 「範囲内0件」なのに古いピンが残るゴーストが出る。
+// 見た目(pinColor)ごとに独立プールを持ち、生成後は色を変えない
+const PinColors = [
+  ...new Set([...Object.values(SpotTypeColors), ProhibitedMarkerColor]),
+];
+
+function pinColorOf(spot: SpotV1): string {
+  return spot.isOvernightProhibited ? ProhibitedMarkerColor : SpotTypeColors[spot.type];
+}
+
+type SpotPinPoolProps = {
+  color: string;
+  spots: SpotV1[];
+  onPress: (spot: SpotV1) => void;
+};
+
+// 同一色のピン専用プール。伸ばすだけで縮めない(StaticClusterPoolと同じ理由)
+function SpotPinPool({ color, spots, onPress }: SpotPinPoolProps) {
+  const [poolSize, setPoolSize] = useState(0);
+  const needed = spots.length === 0 ? 0 : spots.length + 4;
+  const effectivePoolSize = Math.max(poolSize, needed);
+  if (effectivePoolSize > poolSize) {
+    setPoolSize(effectivePoolSize);
+  }
+
+  if (effectivePoolSize === 0) {
+    return null;
+  }
+
+  const slots = assignSlots(spots, effectivePoolSize, (spot) => ({
+    latitude: spot.coordinates[1],
+    longitude: spot.coordinates[0],
+  }));
+
+  return (
+    <>
+      {slots.map((spot, slot) => (
+        <Marker
+          key={`pin-${color}-${slot}`}
+          coordinate={
+            spot
+              ? { latitude: spot.coordinates[1], longitude: spot.coordinates[0] }
+              : HIDDEN_COORDINATE
+          }
+          pinColor={color}
+          opacity={spot ? 1 : 0}
+          onPress={() => {
+            if (spot) {
+              onPress(spot);
+            }
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
+type SpotMarkerPoolProps = {
+  spots: SpotV1[];
+  onPress: (spot: SpotV1) => void;
+};
+
+function SpotMarkerPool({ spots, onPress }: SpotMarkerPoolProps) {
+  return (
+    <>
+      {PinColors.map((color) => (
+        <SpotPinPool
+          key={color}
+          color={color}
+          spots={spots.filter((spot) => pinColorOf(spot) === color)}
+          onPress={onPress}
+        />
+      ))}
     </>
   );
 }
@@ -230,21 +314,10 @@ export function SpotsMap({
         }
       }}
     >
-      {spotItems.map((item) => (
-        <Marker
-          key={item.spot.id}
-          coordinate={{
-            latitude: item.spot.coordinates[1],
-            longitude: item.spot.coordinates[0],
-          }}
-          pinColor={
-            item.spot.isOvernightProhibited
-              ? ProhibitedMarkerColor
-              : SpotTypeColors[item.spot.type]
-          }
-          onPress={() => onSelectSpot(item.spot)}
-        />
-      ))}
+      <SpotMarkerPool
+        spots={spotItems.map((item) => item.spot)}
+        onPress={onSelectSpot}
+      />
       <ClusterMarkerPool clusters={clusters} onPress={onClusterPress} />
     </MapView>
   );

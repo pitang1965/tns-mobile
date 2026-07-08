@@ -1,4 +1,9 @@
 {
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/pitan/dev/nextjs/tns-web/src/**)"
+    ]
+  },
   "enabledPlugins": {
     "expo@claude-plugins-official": true
   }

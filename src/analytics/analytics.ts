@@ -1,6 +1,7 @@
 import PostHog from 'posthog-react-native';
 
 import type { SpotType, SpotV1 } from '@/api/spots';
+import type { QuickFilterKey } from '@/constants/quick-filters';
 
 const apiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
 const host = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';
@@ -22,7 +23,10 @@ type SpotEventProps = {
 
 type AnalyticsEvent =
   | { name: 'view_mode_changed'; properties: { mode: 'map' | 'list' } }
-  | { name: 'filter_changed'; properties: { types: SpotType[] } }
+  | {
+      name: 'filter_changed';
+      properties: { types: SpotType[]; quick: QuickFilterKey[] };
+    }
   | { name: 'spot_card_opened'; properties: SpotEventProps }
   | {
       name: 'spot_web_referral';

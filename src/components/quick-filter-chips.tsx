@@ -1,41 +1,46 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import type { SpotType } from '@/api/spots';
 import { ThemedText } from '@/components/themed-text';
-import { AllSpotTypes, SpotTypeColors, SpotTypeShortLabels } from '@/constants/spot-types';
+import {
+  AllQuickFilterKeys,
+  QuickFilterLabels,
+  type QuickFilterKey,
+} from '@/constants/quick-filters';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type Props = {
-  selected: SpotType[];
-  onChange: (types: SpotType[]) => void;
+  selected: QuickFilterKey[];
+  onChange: (keys: QuickFilterKey[]) => void;
 };
 
-// 種別フィルタ: 表示する種別のホワイトリスト(全解除すると0件になる)。
-// スクロールさせず折り返しで8種別すべてを一目で見せる
-export function TypeFilterChips({ selected, onChange }: Props) {
+// 種別(何を見るか)とは別概念の共通アクセント色
+const ActiveColor = '#208AEF';
+
+// クイック絞り込み: 複数ONはAND。すべてOFF=絞り込みなし
+export function QuickFilterChips({ selected, onChange }: Props) {
   const theme = useTheme();
 
-  const toggle = (type: SpotType) => {
-    if (selected.includes(type)) {
-      onChange(selected.filter((t) => t !== type));
+  const toggle = (key: QuickFilterKey) => {
+    if (selected.includes(key)) {
+      onChange(selected.filter((k) => k !== key));
     } else {
-      onChange([...selected, type]);
+      onChange([...selected, key]);
     }
   };
 
   return (
     <View style={styles.container}>
-      {AllSpotTypes.map((type) => {
-        const active = selected.includes(type);
+      {AllQuickFilterKeys.map((key) => {
+        const active = selected.includes(key);
         return (
           <Pressable
-            key={type}
-            onPress={() => toggle(type)}
+            key={key}
+            onPress={() => toggle(key)}
             style={[
               styles.chip,
               {
-                backgroundColor: active ? SpotTypeColors[type] : theme.backgroundElement,
+                backgroundColor: active ? ActiveColor : theme.backgroundElement,
               },
             ]}
             accessibilityRole="button"
@@ -46,7 +51,7 @@ export function TypeFilterChips({ selected, onChange }: Props) {
               style={active ? styles.activeLabel : undefined}
               themeColor={active ? undefined : 'textSecondary'}
             >
-              {SpotTypeShortLabels[type]}
+              {QuickFilterLabels[key]}
             </ThemedText>
           </Pressable>
         );
@@ -61,7 +66,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Spacing.two,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingBottom: Spacing.two,
   },
   chip: {
     paddingHorizontal: Spacing.three,
