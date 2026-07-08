@@ -36,8 +36,16 @@ const WEB_BASE_URL = 'https://tabi.over40web.club';
 
 export const SPOTS_API_URL = `${WEB_BASE_URL}/api/v1/spots`;
 
+// アプリに埋め込む固定APIキー。バンドルから抽出可能なため本物の認証ではなく、
+// 匿名・野良アクセスを弾くための段差。サーバー(tns-web)側の SPOTS_API_KEY と
+// 同じ値を設定する。EXPO_PUBLIC_ 接頭辞によりビルド時にバンドルへ展開される。
+// 未設定(ローカル開発など)ならヘッダー無しで送る。
+const SPOTS_API_KEY = process.env.EXPO_PUBLIC_SPOTS_API_KEY;
+
 export async function fetchSpots(): Promise<SpotsV1Response> {
-  const res = await fetch(SPOTS_API_URL);
+  const res = await fetch(SPOTS_API_URL, {
+    headers: SPOTS_API_KEY ? { 'x-api-key': SPOTS_API_KEY } : undefined,
+  });
   if (!res.ok) {
     throw new Error(`spots API failed: ${res.status}`);
   }
