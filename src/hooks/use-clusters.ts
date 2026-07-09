@@ -25,7 +25,18 @@ const MAP_WIDTH = Dimensions.get('window').width;
 // longitudeDeltaだけでなく画面幅も考慮しないと、supercluster側のズームが
 // 実際の見た目より小さく算出され、ズームインしてもクラスタが解けなくなる
 export function regionToZoom(region: Region): number {
-  const zoom = Math.log2((360 * MAP_WIDTH) / (TILE_SIZE * region.longitudeDelta));
+  const delta = region.longitudeDelta;
+  // react-native-mapsは極端なズームアウト(世界規模・経度180°またぎ)のとき
+  // longitudeDeltaを0や負値で返すことがある。そのままlog2に渡すとNaN/-Infになり、
+  // superclusterのtrees[NaN](undefined)参照で "Cannot read property 'range' of
+  // undefined" として落ちる。無効値は最小ズーム(全体表示)にフォールバックする
+  if (!(delta > 0)) {
+    return 0;
+  }
+  const zoom = Math.log2((360 * MAP_WIDTH) / (TILE_SIZE * delta));
+  if (!Number.isFinite(zoom)) {
+    return 0;
+  }
   return Math.max(0, Math.min(20, Math.round(zoom)));
 }
 
@@ -69,12 +80,16 @@ export function useClusters(spots: SpotV1[], region: Region) {
   const zoom = regionToZoom(region);
 
   const items = useMemo<MapItem[]>(() => {
-    // 表示領域の1.5倍を対象にして、パン直後の空白を減らす
+    // 表示領域の1.5倍を対象にして、パン直後の空白を減らす。
+    // deltaはズームアウト時に負値で返ることがあるため絶対値で半径化し、
+    // bboxが反転(min>max)して空クエリになるのを防ぐ
+    const halfLng = Math.abs(region.longitudeDelta) * 0.75;
+    const halfLat = Math.abs(region.latitudeDelta) * 0.75;
     const bbox: [number, number, number, number] = [
-      region.longitude - region.longitudeDelta * 0.75,
-      region.latitude - region.latitudeDelta * 0.75,
-      region.longitude + region.longitudeDelta * 0.75,
-      region.latitude + region.latitudeDelta * 0.75,
+      region.longitude - halfLng,
+      region.latitude - halfLat,
+      region.longitude + halfLng,
+      region.latitude + halfLat,
     ];
     return index.getClusters(bbox, zoom).map((feature) => {
       const [longitude, latitude] = feature.geometry.coordinates;
