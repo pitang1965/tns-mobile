@@ -17,6 +17,7 @@ export type ReferralOrigin = 'list_row' | 'map_card';
 // spot_web_referral(Web誘導=成果)とは別イベントで数える
 export type InfoLinkTarget =
   | 'shindan'
+  | 'submit'
   | 'updates'
   | 'privacy_policy'
   | 'contact'

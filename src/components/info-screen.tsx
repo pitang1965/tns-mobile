@@ -11,14 +11,29 @@ import { useTheme } from '@/hooks/use-theme';
 // 情報タブ: 運営者情報への静的リンク集。お知らせを含め本文はアプリ内に持たずWebに委ねる。
 // ここからのWeb閲覧はスポット詳細への誘導ではないため、Web誘導(spot_web_referral)には数えない
 
-// 診断は運営者情報とは性格が違う「プロダクトへ引き込むコンテンツ」なので、
-// リストに混ぜず上部の独立カードとして目立たせる
-const shindan = {
-  target: 'shindan' as const,
-  label: '車中泊スタイル診断',
-  description: '10問であなたに合う場所が見つかる',
-  url: `${WEB_BASE_URL}/shachu-haku/shindan?utm_source=app&utm_medium=info`,
+// 診断・投稿は運営者情報とは性格が違う「行動を促すCTA」なので、
+// リストに混ぜず上部の独立カードとして目立たせる(診断=引き込む/投稿=貢献)
+type FeatureCard = {
+  target: InfoLinkTarget;
+  label: string;
+  description: string;
+  url: string;
 };
+
+const featureCards: FeatureCard[] = [
+  {
+    target: 'shindan',
+    label: '車中泊スタイル診断',
+    description: '10問であなたに合う場所が見つかる',
+    url: `${WEB_BASE_URL}/shachu-haku/shindan?utm_source=app&utm_medium=info`,
+  },
+  {
+    target: 'submit',
+    label: '車中泊スポット情報の投稿',
+    description: '知っている場所を教えてください',
+    url: `${WEB_BASE_URL}/shachu-haku/submit?utm_source=app&utm_medium=info`,
+  },
+];
 
 const links: { target: InfoLinkTarget; label: string; url: string }[] = [
   {
@@ -38,7 +53,7 @@ const links: { target: InfoLinkTarget; label: string; url: string }[] = [
   },
   {
     target: 'website',
-    label: '車旅のしおり(Webサイト)',
+    label: '車旅のしおり トップページ',
     url: `${WEB_BASE_URL}/?utm_source=app&utm_medium=info`,
   },
 ];
@@ -66,19 +81,24 @@ export function InfoScreen() {
         )}
       </View>
 
-      <Pressable
-        onPress={() => openLink(shindan)}
-        accessibilityRole="link"
-        style={[styles.shindanCard, { backgroundColor: theme.backgroundSelected }]}
-      >
-        <View style={styles.shindanText}>
-          <ThemedText type="smallBold">{shindan.label}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {shindan.description}
-          </ThemedText>
-        </View>
-        <ThemedText themeColor="textSecondary">↗</ThemedText>
-      </Pressable>
+      <View style={styles.featureGroup}>
+        {featureCards.map((card) => (
+          <Pressable
+            key={card.target}
+            onPress={() => openLink(card)}
+            accessibilityRole="link"
+            style={[styles.featureCard, { backgroundColor: theme.backgroundSelected }]}
+          >
+            <View style={styles.featureText}>
+              <ThemedText type="smallBold">{card.label}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {card.description}
+              </ThemedText>
+            </View>
+            <ThemedText themeColor="textSecondary">↗</ThemedText>
+          </Pressable>
+        ))}
+      </View>
 
       <View style={[styles.linkGroup, { backgroundColor: theme.backgroundElement }]}>
         {links.map((link, index) => (
@@ -120,7 +140,10 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     paddingTop: Spacing.three,
   },
-  shindanCard: {
+  featureGroup: {
+    gap: Spacing.two,
+  },
+  featureCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -128,8 +151,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
   },
-  shindanText: {
+  featureText: {
     gap: Spacing.half,
+    flexShrink: 1,
   },
   linkGroup: {
     borderRadius: Spacing.two,
