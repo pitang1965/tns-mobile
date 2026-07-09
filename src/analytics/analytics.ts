@@ -13,6 +13,15 @@ export const posthog: PostHog | null = apiKey
 
 export type ReferralOrigin = 'list_row' | 'map_card';
 
+// 情報タブからのWeb閲覧はスポット詳細への誘導ではないため、
+// spot_web_referral(Web誘導=成果)とは別イベントで数える
+export type InfoLinkTarget =
+  | 'shindan'
+  | 'updates'
+  | 'privacy_policy'
+  | 'contact'
+  | 'website';
+
 type SpotEventProps = {
   spot_id: string;
   spot_type: SpotType;
@@ -22,7 +31,8 @@ type SpotEventProps = {
 };
 
 type AnalyticsEvent =
-  | { name: 'view_mode_changed'; properties: { mode: 'map' | 'list' } }
+  | { name: 'view_mode_changed'; properties: { mode: 'map' | 'list' | 'info' } }
+  | { name: 'info_link_opened'; properties: { target: InfoLinkTarget } }
   | {
       name: 'filter_changed';
       properties: { types: SpotType[]; quick: QuickFilterKey[] };

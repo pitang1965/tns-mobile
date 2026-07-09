@@ -32,7 +32,7 @@ export type SpotsV1Response = {
   spots: SpotV1[];
 };
 
-const WEB_BASE_URL = 'https://tabi.over40web.club';
+export const WEB_BASE_URL = 'https://tabi.over40web.club';
 
 export const SPOTS_API_URL = `${WEB_BASE_URL}/api/v1/spots`;
 

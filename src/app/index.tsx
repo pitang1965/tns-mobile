@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { spotEventProps, track } from '@/analytics/analytics';
 import type { SpotType, SpotV1 } from '@/api/spots';
+import { InfoScreen } from '@/components/info-screen';
 import { NoticeBanner } from '@/components/notice-banner';
 import { QuickFilterChips } from '@/components/quick-filter-chips';
 import { SegmentToggle, type ViewMode } from '@/components/segment-toggle';
@@ -134,27 +135,34 @@ export default function NearbySpotsScreen() {
           </ThemedText>
         </View>
 
-        <TypeFilterChips selected={selectedTypes} onChange={changeTypes} />
-        <QuickFilterChips selected={quickFilters} onChange={changeQuickFilters} />
+        {/* 情報タブは静的リンク集なので、絞り込みチップやスポット系の通知は出さない */}
+        {viewMode !== 'info' && (
+          <>
+            <TypeFilterChips selected={selectedTypes} onChange={changeTypes} />
+            <QuickFilterChips selected={quickFilters} onChange={changeQuickFilters} />
 
-        {viewMode === 'map' && !isLoading && !loadFailed && emptyInRegion && (
-          <NoticeBanner tone="info" text="条件に合うスポットがこの範囲にありません" />
-        )}
-        {staleDays != null && (
-          <NoticeBanner
-            tone="warning"
-            text={`オフライン: ${staleDays}日前に取得したデータを表示中`}
-          />
-        )}
-        {usingMapCenter && (
-          <NoticeBanner
-            tone="info"
-            text="現在地が使えないため、地図の中心から近い順に表示します"
-          />
+            {viewMode === 'map' && !isLoading && !loadFailed && emptyInRegion && (
+              <NoticeBanner tone="info" text="条件に合うスポットがこの範囲にありません" />
+            )}
+            {staleDays != null && (
+              <NoticeBanner
+                tone="warning"
+                text={`オフライン: ${staleDays}日前に取得したデータを表示中`}
+              />
+            )}
+            {usingMapCenter && (
+              <NoticeBanner
+                tone="info"
+                text="現在地が使えないため、地図の中心から近い順に表示します"
+              />
+            )}
+          </>
         )}
 
         <View style={styles.content}>
-          {isLoading ? (
+          {viewMode === 'info' ? (
+            <InfoScreen />
+          ) : isLoading ? (
             <View style={styles.center}>
               <ActivityIndicator size="large" />
               <ThemedText type="small" themeColor="textSecondary">

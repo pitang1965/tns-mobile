@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-export type ViewMode = 'map' | 'list';
+export type ViewMode = 'map' | 'list' | 'info';
 
 type Props = {
   mode: ViewMode;
@@ -14,6 +14,7 @@ type Props = {
 const segments: { mode: ViewMode; label: string }[] = [
   { mode: 'map', label: '地図' },
   { mode: 'list', label: '一覧' },
+  { mode: 'info', label: '情報' },
 ];
 
 export function SegmentToggle({ mode, onChange }: Props) {
