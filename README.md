@@ -1,56 +1,87 @@
-# Welcome to your Expo app 👋
+# 車中泊スポットマップ (tns-mobile)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+現在地周辺の車中泊スポットを地図・一覧で探し、タップで Web(車旅のしおり)の詳細ページへ誘導する、獲得ファネル用のモバイルアプリです。全国約 1,900 件の車中泊スポットを表示します。
 
-## Get started
+アプリ内に詳細画面は持たず、唯一の成果地点は **Web 誘導**(外部ブラウザで [車旅のしおり](https://tabi.over40web.club) のスポット詳細を開くこと)です。データは車旅のしおりの公開 API(`/api/v1/spots`)から取得します。
 
-1. Install dependencies
+## 主な機能
 
-   ```bash
-   npm install
-   ```
+- **地図 / 一覧 / 情報** の 3 表示切り替え(地図はマーカーのクラスタリング表示)
+- **種別フィルタ** と **クイック絞り込み**(無料・トイレ/風呂/コンビニ 200m 以内・標高 500m 以上、AND 条件)
+- **現在地基準**の「近い順」表示。現在地が使えないときは **地図中心基準** に自動で切り替え
+- **オフライン対応**: スポットを端末にキャッシュし、再取得に失敗しても表示を継続。一定期間より古い場合は「古いデータ表示」で鮮度を通知
+- **車中泊禁止警告**: 泊まれないスポットも隠さず、明示的に区別して表示
+- PostHog による匿名の利用計測(未設定なら無効化)
 
-2. Start the app
+ドメイン用語の定義は [CONTEXT.md](./CONTEXT.md) を参照してください。
 
-   ```bash
-   npx expo start
-   ```
+## 技術スタック
 
-In the output, you'll find options to open the app in a
+- [Expo](https://expo.dev) SDK 57 / React Native 0.86 / React 19
+- [Expo Router](https://docs.expo.dev/router/introduction)(ファイルベースルーティング、`src/app`)
+- [react-native-maps](https://github.com/react-native-maps/react-native-maps)(iOS: Apple Maps / Android: Google Maps。選定理由は [docs/adr/0001](./docs/adr/0001-react-native-maps-over-mapbox.md))
+- TypeScript(strict)、PostHog、supercluster
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## ディレクトリ構成
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/
+├── app/          expo-router の画面(index.tsx がメイン)
+├── api/          車旅のしおり API クライアント(spots)
+├── components/   UI コンポーネント(地図・一覧・情報タブ等)
+├── hooks/        スポット取得・現在地・テーマ等のフック
+├── lib/          距離計算(geo)・Web 誘導(referral)
+├── storage/      スポットのローカルキャッシュ
+├── constants/    種別・クイックフィルタ・テーマ定義
+└── analytics/    PostHog イベント定義
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+パスエイリアス `@/*` は `src/*` を指します。
 
-### Other setup steps
+## セットアップ
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+前提: Node.js LTS、npm。
 
-## Learn more
+```bash
+npm install
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+環境変数は `.env.example` をコピーして設定します(値の詳細は同ファイルのコメント参照)。
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+cp .env.example .env
+```
 
-## Join the community
+| 変数 | 用途 |
+| --- | --- |
+| `EXPO_PUBLIC_SPOTS_API_KEY` | スポット API の固定キー(tns-web の `SPOTS_API_KEY` と同値。実質必須) |
+| `GOOGLE_MAPS_ANDROID_API_KEY` | Android 本番ビルドの地図表示に必須(Expo Go 開発では不要) |
+| `EXPO_PUBLIC_POSTHOG_API_KEY` | 利用計測。未設定なら計測は無効化されアプリは通常動作 |
+| `EXPO_PUBLIC_POSTHOG_HOST` | PostHog ホスト(例: `https://us.i.posthog.com`) |
 
-Join our community of developers creating universal apps.
+## 開発
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npm run android   # expo run:android(開発ビルドを作成・インストール)
+npm run lint      # ESLint
+npx tsc --noEmit  # 型チェック
+```
+
+> **注意**: Android の地図は Expo Go では表示されません(タイルが出ない)。地図を確認するには EAS 開発ビルド、または `npm run android` によるローカル開発ビルドが必要です。
+
+## ビルド / リリース
+
+[EAS Build](https://docs.expo.dev/build/introduction/) を使用します(プロファイルは [eas.json](./eas.json))。
+
+```bash
+eas build --profile development --platform android  # 開発ビルド(APK・内部配布)
+eas build --profile preview     --platform android  # 検証ビルド(APK・内部配布)
+eas build --profile production  --platform android  # 本番ビルド(AAB)
+```
+
+初期リリースは Android(Google Play)のみを対象としています。本番ビルドでは環境変数(`GOOGLE_MAPS_ANDROID_API_KEY` ほか)を EAS Secret / 環境変数として設定し、リポジトリにはコミットしません。
+
+## ドキュメント
+
+- [CONTEXT.md](./CONTEXT.md) — ドメイン用語集
+- [docs/adr/](./docs/adr/) — アーキテクチャ決定記録(ADR)
