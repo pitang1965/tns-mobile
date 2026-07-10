@@ -4,6 +4,16 @@
 
 アプリ内に詳細画面は持たず、唯一の成果地点は **Web 誘導**(外部ブラウザで [車旅のしおり](https://tabi.over40web.club) のスポット詳細を開くこと)です。データは車旅のしおりの公開 API(`/api/v1/spots`)から取得します。
 
+![車中泊スポットマップ](docs/images/feature-graphic.png)
+
+## スクリーンショット
+
+<p align="center">
+  <img src="docs/images/screenshot-map.png" width="30%" alt="地図で近い順にスポットを表示" />
+  <img src="docs/images/screenshot-list.png" width="30%" alt="一覧とクイック絞り込み" />
+  <img src="docs/images/screenshot-nationwide.png" width="30%" alt="全国の車中泊スポット" />
+</p>
+
 ## 主な機能
 
 - **地図 / 一覧 / 情報** の 3 表示切り替え(地図はマーカーのクラスタリング表示)
