@@ -25,9 +25,11 @@ import { useCurrentLocation } from '@/hooks/use-current-location';
 import { useSpots } from '@/hooks/use-spots';
 import { distanceKm, type LatLng } from '@/lib/geo';
 
-// 一覧は起点(現在地または地図中心)からこの距離以内のみ表示する。
+// 一覧は起点(現在地または地図中心)から近い順に上位 LIST_MAX_COUNT 件だけ表示する。
+// 距離フィルタは遠すぎる件を出さないためのバックストップ(通常は件数上限が先に効く)。
 // 地図は表示領域で自然に絞られるため上限をかけない
 const LIST_RADIUS_KM = 200;
+const LIST_MAX_COUNT = 50;
 
 // 現在地が取れるまで・取れないときの初期表示(日本全体)
 const JAPAN_REGION: Region = {
@@ -94,7 +96,8 @@ export default function NearbySpotsScreen() {
       filteredSpots
         .map((spot) => ({ spot, distanceKm: distanceKm(origin, spotLatLng(spot)) }))
         .filter((item) => item.distanceKm <= LIST_RADIUS_KM)
-        .sort((a, b) => a.distanceKm - b.distanceKm),
+        .sort((a, b) => a.distanceKm - b.distanceKm)
+        .slice(0, LIST_MAX_COUNT),
     [filteredSpots, origin],
   );
 
@@ -198,7 +201,11 @@ export default function NearbySpotsScreen() {
               )}
             </>
           ) : (
-            <SpotList items={sortedItems} />
+            <SpotList
+              items={sortedItems}
+              maxCount={LIST_MAX_COUNT}
+              radiusKm={LIST_RADIUS_KM}
+            />
           )}
         </View>
       </SafeAreaView>

@@ -14,12 +14,23 @@ export type SpotWithDistance = {
 
 type Props = {
   items: SpotWithDistance[];
+  // 件数上限(近い順にこの件数で頭打ち)。ヘッダー表記に使う
+  maxCount?: number;
+  // 距離上限(km)。件数が上限未満のときは距離が実際の制約になるため表記する
+  radiusKm?: number;
 };
 
 // 近い順の一覧。行タップで即Web誘導(アプリ内詳細画面は持たない)
-export function SpotList({ items }: Props) {
+export function SpotList({ items, maxCount, radiusKm }: Props) {
   const theme = useTheme();
   const total = items.length;
+  // 件数上限に達しているときは「近い順50件」、そうでなければ距離上限が実際の制約
+  const atMax = maxCount != null && total >= maxCount;
+  const headerLabel = atMax
+    ? `近い順・上位${maxCount}件`
+    : radiusKm != null
+      ? `${total}件(近い順・${radiusKm}km以内)`
+      : `${total}件(近い順)`;
 
   return (
     <FlatList
@@ -31,7 +42,7 @@ export function SpotList({ items }: Props) {
             style={[styles.countHeader, { borderBottomColor: theme.backgroundElement }]}
           >
             <ThemedText type="small" themeColor="textSecondary">
-              {`${total}件(近い順・200km以内)`}
+              {headerLabel}
             </ThemedText>
           </View>
         ) : null
