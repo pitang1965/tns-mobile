@@ -81,15 +81,28 @@ npx tsc --noEmit  # 型チェック
 
 ## ビルド / リリース
 
-[EAS Build](https://docs.expo.dev/build/introduction/) を使用します(プロファイルは [eas.json](./eas.json))。
+[EAS Build](https://docs.expo.dev/build/introduction/) を使用します(プロファイルは [eas.json](./eas.json))。よく使う操作は `package.json` の npm スクリプトにまとめてあります。
 
 ```bash
-eas build --profile development --platform android  # 開発ビルド(APK・内部配布)
-eas build --profile preview     --platform android  # 検証ビルド(APK・内部配布)
-eas build --profile production  --platform android  # 本番ビルド(AAB)
+npm run build:dev      # 開発ビルド(APK・内部配布)   = eas build --profile development --platform android
+npm run build:preview  # 検証ビルド(APK・内部配布)   = eas build --profile preview     --platform android
+npm run build:prod     # 本番ビルド(AAB)            = eas build --profile production  --platform android
+npm run builds         # 直近のビルド一覧            = eas build:list --platform android --limit 5
+npm run submit:prod    # ストア提出                 = eas submit --profile production --platform android
+npm run update         # OTA配信(JS/アセットのみ)   = eas update
 ```
 
 初期リリースは Android(Google Play)のみを対象としています。本番ビルドでは環境変数(`GOOGLE_MAPS_ANDROID_API_KEY` ほか)を EAS Secret / 環境変数として設定し、リポジトリにはコミットしません。
+
+### リリースの流れ
+
+`eas build` は GitHub ではなく **ローカルの git コミット済みの状態**をクラウドへ上げてビルドします(`git push` は不要)。未コミットの変更はビルドに含まれないため、先にコミットしてください。
+
+1. `npm run android` — ローカルで動作確認
+2. `app.json` の `version` を更新(versionCode は EAS が自動採番)
+3. `git commit` — ビルド対象を確定(push は任意)
+4. `npm run build:prod` — 本番 AAB をビルド
+5. ビルド完了後、AAB を [Play Console](https://play.google.com/console) のクローズドテストトラックへアップロード
 
 ## ドキュメント
 
