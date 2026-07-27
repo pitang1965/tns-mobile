@@ -9,14 +9,17 @@ export type QuickFilterKey =
   | 'convenience_near'
   | 'high_elevation';
 
-// 「◯◯200m以内」はWebのクイックフィルタと同じ数値
+// 風呂・コンビニの「200m以内」しきい値。Webのクイックフィルタと同じ数値
 export const NearDistanceM = 200;
+// トイレは深夜に長距離を歩くと目が覚める負担があるため、少し広い300m(Web詳細
+// フィルタの最大値)まで許容する。Webのクイックチップ(200m)とは意図的にズレる
+export const ToiletNearDistanceM = 300;
 // 夏の暑さ対策(約-3℃)を意味する標高しきい値
 export const MinElevationM = 500;
 
 export const QuickFilterLabels: Record<QuickFilterKey, string> = {
   free: '無料',
-  toilet_near: 'トイレ200m',
+  toilet_near: 'トイレ300m',
   bath_near: '風呂200m',
   convenience_near: 'コンビニ200m',
   high_elevation: '標高500m+',
@@ -35,7 +38,7 @@ export const AllQuickFilterKeys: QuickFilterKey[] = [
 export const QuickFilterPredicates: Record<QuickFilterKey, (spot: SpotV1) => boolean> = {
   free: (spot) => spot.isFree,
   toilet_near: (spot) =>
-    spot.distanceToToilet != null && spot.distanceToToilet <= NearDistanceM,
+    spot.distanceToToilet != null && spot.distanceToToilet <= ToiletNearDistanceM,
   bath_near: (spot) => spot.distanceToBath != null && spot.distanceToBath <= NearDistanceM,
   convenience_near: (spot) =>
     spot.distanceToConvenience != null && spot.distanceToConvenience <= NearDistanceM,
