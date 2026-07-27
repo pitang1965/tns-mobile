@@ -9,20 +9,22 @@ export type QuickFilterKey =
   | 'convenience_near'
   | 'high_elevation';
 
-// 風呂・コンビニの「200m以内」しきい値。Webのクイックフィルタと同じ数値
-export const NearDistanceM = 200;
-// トイレは深夜に長距離を歩くと目が覚める負担があるため、少し広い300m(Web詳細
-// フィルタの最大値)まで許容する。Webのクイックチップ(200m)とは意図的にズレる
+// 設備ごとの「◯m以内」しきい値。徒歩負担の許容度が施設ごとに異なるため個別に持つ。
+// トイレは深夜に長距離を歩くと目が覚める負担を考え300m(Web詳細フィルタの最大値)。
+// コンビニも同様に300m。風呂は湯冷めを避けたい一方で車移動前提の利用も多く、
+// 徒歩圏より広めの1000mまで許容する。Webのクイックチップとは意図的にズレる
 export const ToiletNearDistanceM = 300;
+export const ConvenienceNearDistanceM = 300;
+export const BathNearDistanceM = 1000;
 // 夏の暑さ対策(約-3℃)を意味する標高しきい値
 export const MinElevationM = 500;
 
 export const QuickFilterLabels: Record<QuickFilterKey, string> = {
   free: '無料',
-  toilet_near: 'トイレ300m',
-  bath_near: '風呂200m',
-  convenience_near: 'コンビニ200m',
-  high_elevation: '標高500m+',
+  toilet_near: 'トイレ300m以内',
+  bath_near: '風呂1km以内',
+  convenience_near: 'コンビニ300m以内',
+  high_elevation: '標高500m以上',
 };
 
 export const AllQuickFilterKeys: QuickFilterKey[] = [
@@ -39,8 +41,10 @@ export const QuickFilterPredicates: Record<QuickFilterKey, (spot: SpotV1) => boo
   free: (spot) => spot.isFree,
   toilet_near: (spot) =>
     spot.distanceToToilet != null && spot.distanceToToilet <= ToiletNearDistanceM,
-  bath_near: (spot) => spot.distanceToBath != null && spot.distanceToBath <= NearDistanceM,
+  bath_near: (spot) =>
+    spot.distanceToBath != null && spot.distanceToBath <= BathNearDistanceM,
   convenience_near: (spot) =>
-    spot.distanceToConvenience != null && spot.distanceToConvenience <= NearDistanceM,
+    spot.distanceToConvenience != null &&
+    spot.distanceToConvenience <= ConvenienceNearDistanceM,
   high_elevation: (spot) => spot.elevation >= MinElevationM,
 };
