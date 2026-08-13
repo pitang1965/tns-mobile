@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Read(//c/Users/pitan/dev/nextjs/tns-web/src/**)"
+      "Read(//c/Users/pitan/dev/nextjs/tns-web/src/**)",
+      "Bash(npm --version)"
     ]
   },
   "enabledPlugins": {
