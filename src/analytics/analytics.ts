@@ -38,6 +38,10 @@ type AnalyticsEvent =
       name: 'filter_changed';
       properties: { types: SpotType[]; quick: QuickFilterKey[] };
     }
+  | {
+      name: 'vehicle_height_changed';
+      properties: { vehicle_height: number | null; include_unknown: boolean };
+    }
   | { name: 'spot_card_opened'; properties: SpotEventProps }
   | {
       name: 'spot_web_referral';

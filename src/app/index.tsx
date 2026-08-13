@@ -15,6 +15,7 @@ import { SpotsMap } from '@/components/spots-map';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TypeFilterChips } from '@/components/type-filter-chips';
+import { VehicleHeightFilter } from '@/components/vehicle-height-filter';
 import {
   QuickFilterPredicates,
   type QuickFilterKey,
@@ -23,7 +24,9 @@ import { AllSpotTypes } from '@/constants/spot-types';
 import { Spacing } from '@/constants/theme';
 import { useCurrentLocation } from '@/hooks/use-current-location';
 import { useSpots } from '@/hooks/use-spots';
+import { useVehicleHeight } from '@/hooks/use-vehicle-height';
 import { distanceKm, type LatLng } from '@/lib/geo';
+import { spotPassesHeightFilter, type VehicleHeightSettings } from '@/lib/height-filter';
 
 // 一覧は起点(現在地または地図中心)から近い順に上位 LIST_MAX_COUNT 件だけ表示する。
 // 距離フィルタは遠すぎる件を出さないためのバックストップ(通常は件数上限が先に効く)。
@@ -51,6 +54,8 @@ export default function NearbySpotsScreen() {
   const [selectedTypes, setSelectedTypes] = useState<SpotType[]>(() => [...AllSpotTypes]);
   // クイック絞り込みは起動ごとに全OFF(全件表示)から始める。永続化しない
   const [quickFilters, setQuickFilters] = useState<QuickFilterKey[]>([]);
+  // 車高フィルタは車のスペックで変わらないため AsyncStorage に永続化する
+  const { settings: heightSettings, setSettings: setHeightSettings } = useVehicleHeight();
   const [region, setRegion] = useState<Region>(JAPAN_REGION);
   const [selectedSpot, setSelectedSpot] = useState<SpotV1 | null>(null);
 
@@ -69,14 +74,19 @@ export default function NearbySpotsScreen() {
     const active = new Set(selectedTypes);
     const predicates = quickFilters.map((key) => QuickFilterPredicates[key]);
     return spots.filter(
-      (spot) => active.has(spot.type) && predicates.every((matches) => matches(spot)),
+      (spot) =>
+        active.has(spot.type) &&
+        predicates.every((matches) => matches(spot)) &&
+        spotPassesHeightFilter(spot, heightSettings),
     );
-  }, [spots, selectedTypes, quickFilters]);
+  }, [spots, selectedTypes, quickFilters, heightSettings]);
 
   // 絞り込みが効いている状態で地図の表示範囲内が0件のときだけ知らせる。
   // 空の地図が「壊れた・データがない」と誤解されるのを防ぐ(一覧には既存の空表示がある)
   const filtersActive =
-    quickFilters.length > 0 || selectedTypes.length < AllSpotTypes.length;
+    quickFilters.length > 0 ||
+    selectedTypes.length < AllSpotTypes.length ||
+    heightSettings.vehicleHeight != null;
   const emptyInRegion = useMemo(() => {
     if (!filtersActive) {
       return false;
@@ -118,6 +128,18 @@ export default function NearbySpotsScreen() {
     track({ name: 'filter_changed', properties: { types: selectedTypes, quick: keys } });
   };
 
+  const changeHeightSettings = (next: VehicleHeightSettings) => {
+    setHeightSettings(next);
+    setSelectedSpot(null);
+    track({
+      name: 'vehicle_height_changed',
+      properties: {
+        vehicle_height: next.vehicleHeight,
+        include_unknown: next.includeUnknownHeight,
+      },
+    });
+  };
+
   const selectSpot = (spot: SpotV1 | null) => {
     setSelectedSpot(spot);
     if (spot) {
@@ -143,6 +165,12 @@ export default function NearbySpotsScreen() {
           <>
             <TypeFilterChips selected={selectedTypes} onChange={changeTypes} />
             <QuickFilterChips selected={quickFilters} onChange={changeQuickFilters} />
+            <View style={styles.heightFilterRow}>
+              <VehicleHeightFilter
+                settings={heightSettings}
+                onChange={changeHeightSettings}
+              />
+            </View>
 
             {viewMode === 'map' && !isLoading && !loadFailed && emptyInRegion && (
               <NoticeBanner tone="info" text="条件に合うスポットがこの範囲にありません" />
@@ -226,6 +254,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
+  },
+  heightFilterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.two,
   },
   content: {
     flex: 1,

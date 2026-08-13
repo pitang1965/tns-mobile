@@ -24,6 +24,9 @@ export type SpotV1 = {
   distanceToToilet?: number; // meters(欠損あり。表示・絞り込みとも欠損前提で扱う)
   distanceToConvenience?: number; // meters
   distanceToBath?: number; // meters
+  maxVehicleHeight?: number; // 全高制限(cm)。値なし=不明。車高フィルタで使用
+  noHeightLimit?: boolean; // true=高さ制限なし確定。maxVehicleHeightより優先して「入れる側」
+  heightLimitCaution?: boolean; // true=要注意(区画差・入口の低い梁など)。バッジ表示用
 };
 
 export type SpotsV1Response = {

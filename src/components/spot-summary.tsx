@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import type { SpotV1 } from '@/api/spots';
+import { SpotHeightBadge } from '@/components/spot-height-badge';
 import { ThemedText } from '@/components/themed-text';
 import { SpotTypeColors, SpotTypeShortLabels } from '@/constants/spot-types';
 import { Spacing } from '@/constants/theme';
@@ -39,11 +40,22 @@ export function SpotSummary({ spot, distanceKm }: Props) {
         </View>
       </View>
 
-      {spot.isOvernightProhibited && (
-        <View style={styles.prohibitedBadge}>
-          <ThemedText type="smallBold" style={styles.prohibitedLabel}>
-            ⚠ 車中泊禁止
-          </ThemedText>
+      {(spot.isOvernightProhibited ||
+        spot.noHeightLimit ||
+        spot.maxVehicleHeight != null) && (
+        <View style={styles.badgeRow}>
+          {spot.isOvernightProhibited && (
+            <View style={styles.prohibitedBadge}>
+              <ThemedText type="smallBold" style={styles.prohibitedLabel}>
+                ⚠ 車中泊禁止
+              </ThemedText>
+            </View>
+          )}
+          <SpotHeightBadge
+            maxVehicleHeight={spot.maxVehicleHeight}
+            noHeightLimit={spot.noHeightLimit}
+            heightLimitCaution={spot.heightLimitCaution}
+          />
         </View>
       )}
 
@@ -82,6 +94,12 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 12,
     lineHeight: 18,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: Spacing.one,
   },
   prohibitedBadge: {
     alignSelf: 'flex-start',
