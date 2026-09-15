@@ -3,12 +3,19 @@ import { StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, type Region } from 'react-native-maps';
 
 import type { SpotV1 } from '@/api/spots';
+import {
+  AllSpotMarks,
+  SpotMarkColors,
+  type SpotMark,
+  type SpotMarks,
+} from '@/constants/spot-marks';
 import { ProhibitedMarkerColor, SpotTypeColors } from '@/constants/spot-types';
 import { useClusters, zoomToLongitudeDelta, type MapItem } from '@/hooks/use-clusters';
 import type { LatLng } from '@/lib/geo';
 
 type Props = {
   spots: SpotV1[];
+  marks: SpotMarks;
   region: Region;
   onRegionChange: (region: Region) => void;
   userCoords: LatLng | null;
@@ -231,6 +238,91 @@ function SpotMarkerPool({ spots, onPress }: SpotMarkerPoolProps) {
   );
 }
 
+// スポットの印マーカー。クラスタにまとめず、どのズームでも印の位置に重ねて出す
+// (日本全体を見ながら次の旅を考えるため)。印の種類ごとに独立プールを持ち、
+// 見た目は生成後変えない。印を変えたスポットは別の種類のプールへ移るだけ
+const MarkBadgeLabels: Record<SpotMark, string> = {
+  want: '♡',
+  visited: '✓',
+  again: '♡✓',
+};
+
+type MarkPinPoolProps = {
+  mark: SpotMark;
+  spots: SpotV1[];
+  onPress: (spot: SpotV1) => void;
+};
+
+// 同一種類の印マーカー専用プール。伸ばすだけで縮めない(StaticClusterPoolと同じ理由)
+function MarkPinPool({ mark, spots, onPress }: MarkPinPoolProps) {
+  const [poolSize, setPoolSize] = useState(0);
+  const needed = spots.length === 0 ? 0 : spots.length + 4;
+  const effectivePoolSize = Math.max(poolSize, needed);
+  if (effectivePoolSize > poolSize) {
+    setPoolSize(effectivePoolSize);
+  }
+
+  if (effectivePoolSize === 0) {
+    return null;
+  }
+
+  const slots = assignSlots(spots, effectivePoolSize, (spot) => ({
+    latitude: spot.coordinates[1],
+    longitude: spot.coordinates[0],
+  }));
+
+  return (
+    <>
+      {slots.map((spot, slot) => (
+        <Marker
+          key={`mark-${mark}-${slot}`}
+          coordinate={
+            spot
+              ? { latitude: spot.coordinates[1], longitude: spot.coordinates[0] }
+              : HIDDEN_COORDINATE
+          }
+          anchor={{ x: 0.5, y: 0.5 }}
+          opacity={spot ? 1 : 0}
+          zIndex={1000}
+          onPress={() => {
+            if (spot) {
+              onPress(spot);
+            }
+          }}
+          tracksViewChanges
+        >
+          <View style={[styles.markBadge, { backgroundColor: SpotMarkColors[mark] }]}>
+            <Text style={styles.markBadgeLabel}>{MarkBadgeLabels[mark]}</Text>
+          </View>
+        </Marker>
+      ))}
+    </>
+  );
+}
+
+type MarkMarkerPoolProps = {
+  spots: SpotV1[];
+  marks: SpotMarks;
+  onPress: (spot: SpotV1) => void;
+};
+
+function MarkMarkerPool({ spots, marks, onPress }: MarkMarkerPoolProps) {
+  // 印マーカーは絞り込み後のスポットにだけ出す(他の絞り込みの例外にはしない)
+  const marked = spots.filter((spot) => marks[spot.id] != null);
+  return (
+    <>
+      {AllSpotMarks.map((mark) => (
+        <MarkPinPool
+          key={mark}
+          mark={mark}
+          spots={marked.filter((spot) => marks[spot.id]?.mark === mark)}
+          onPress={onPress}
+        />
+      ))}
+    </>
+  );
+}
+
 function ClusterMarkerPool({ clusters, onPress }: ClusterMarkerPoolProps) {
   return (
     <>
@@ -248,6 +340,7 @@ function ClusterMarkerPool({ clusters, onPress }: ClusterMarkerPoolProps) {
 
 export function SpotsMap({
   spots,
+  marks,
   region,
   onRegionChange,
   userCoords,
@@ -319,6 +412,7 @@ export function SpotsMap({
         onPress={onSelectSpot}
       />
       <ClusterMarkerPool clusters={clusters} onPress={onClusterPress} />
+      <MarkMarkerPool spots={spots} marks={marks} onPress={onSelectSpot} />
     </MapView>
   );
 }
@@ -342,5 +436,20 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     fontSize: 13,
+  },
+  markBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markBadgeLabel: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 12,
   },
 });

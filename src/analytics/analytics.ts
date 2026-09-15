@@ -2,6 +2,7 @@ import PostHog from 'posthog-react-native';
 
 import type { SpotType, SpotV1 } from '@/api/spots';
 import type { QuickFilterKey } from '@/constants/quick-filters';
+import type { SpotMarkState } from '@/constants/spot-marks';
 
 const apiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
 const host = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';
@@ -46,6 +47,19 @@ type AnalyticsEvent =
   | {
       name: 'spot_web_referral';
       properties: SpotEventProps & { origin: ReferralOrigin };
+    }
+  | {
+      // 印の計測には spot_id・都道府県・距離を含めない(行った場所の履歴を残さない。ADR-0002)
+      name: 'spot_mark_changed';
+      properties: {
+        from: SpotMarkState;
+        to: SpotMarkState;
+        origin: ReferralOrigin;
+        spot_type: SpotType;
+        want_count: number;
+        visited_count: number;
+        again_count: number;
+      };
     }
   | { name: 'location_permission_result'; properties: { granted: boolean } };
 

@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import type { Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { spotEventProps, track } from '@/analytics/analytics';
+import { spotEventProps, track, type ReferralOrigin } from '@/analytics/analytics';
 import type { SpotType, SpotV1 } from '@/api/spots';
 import { InfoScreen } from '@/components/info-screen';
 import { NoticeBanner } from '@/components/notice-banner';
@@ -20,9 +20,11 @@ import {
   QuickFilterPredicates,
   type QuickFilterKey,
 } from '@/constants/quick-filters';
+import { countMarks, markOf, type SpotMarkState } from '@/constants/spot-marks';
 import { AllSpotTypes } from '@/constants/spot-types';
 import { Spacing } from '@/constants/theme';
 import { useCurrentLocation } from '@/hooks/use-current-location';
+import { useSpotMarks } from '@/hooks/use-spot-marks';
 import { useSpots } from '@/hooks/use-spots';
 import { useVehicleHeight } from '@/hooks/use-vehicle-height';
 import { distanceKm, type LatLng } from '@/lib/geo';
@@ -56,6 +58,8 @@ export default function NearbySpotsScreen() {
   const [quickFilters, setQuickFilters] = useState<QuickFilterKey[]>([]);
   // 車高フィルタは車のスペックで変わらないため AsyncStorage に永続化する
   const { settings: heightSettings, setSettings: setHeightSettings } = useVehicleHeight();
+  // スポットの印は端末内だけに永続化する(ADR-0002)
+  const { marks, setMark } = useSpotMarks();
   const [region, setRegion] = useState<Region>(JAPAN_REGION);
   const [selectedSpot, setSelectedSpot] = useState<SpotV1 | null>(null);
 
@@ -76,10 +80,15 @@ export default function NearbySpotsScreen() {
     return spots.filter(
       (spot) =>
         active.has(spot.type) &&
-        predicates.every((matches) => matches(spot)) &&
+        predicates.every((matches) => matches(spot, marks)) &&
         spotPassesHeightFilter(spot, heightSettings),
     );
-  }, [spots, selectedTypes, quickFilters, heightSettings]);
+  }, [spots, selectedTypes, quickFilters, heightSettings, marks]);
+
+  // 「行きたい」で絞り込み中は、遠くの行きたい場所も計画の対象なので一覧の距離・件数上限を外す
+  const wantToVisitOnly = quickFilters.includes('want_to_visit');
+  const listRadiusKm = wantToVisitOnly ? undefined : LIST_RADIUS_KM;
+  const listMaxCount = wantToVisitOnly ? undefined : LIST_MAX_COUNT;
 
   // 絞り込みが効いている状態で地図の表示範囲内が0件のときだけ知らせる。
   // 空の地図が「壊れた・データがない」と誤解されるのを防ぐ(一覧には既存の空表示がある)
@@ -105,11 +114,29 @@ export default function NearbySpotsScreen() {
     () =>
       filteredSpots
         .map((spot) => ({ spot, distanceKm: distanceKm(origin, spotLatLng(spot)) }))
-        .filter((item) => item.distanceKm <= LIST_RADIUS_KM)
+        .filter((item) => listRadiusKm == null || item.distanceKm <= listRadiusKm)
         .sort((a, b) => a.distanceKm - b.distanceKm)
-        .slice(0, LIST_MAX_COUNT),
-    [filteredSpots, origin],
+        .slice(0, listMaxCount),
+    [filteredSpots, origin, listRadiusKm, listMaxCount],
   );
+
+  const changeMark = (spot: SpotV1, next: SpotMarkState, markOrigin: ReferralOrigin) => {
+    const from = markOf(marks, spot.id);
+    const counts = countMarks(setMark(spot.id, next));
+    // spot_id・都道府県・距離は送らない(ADR-0002)
+    track({
+      name: 'spot_mark_changed',
+      properties: {
+        from,
+        to: next,
+        origin: markOrigin,
+        spot_type: spot.type,
+        want_count: counts.want,
+        visited_count: counts.visited,
+        again_count: counts.again,
+      },
+    });
+  };
 
   const changeViewMode = (mode: ViewMode) => {
     setViewMode(mode);
@@ -215,6 +242,7 @@ export default function NearbySpotsScreen() {
             <>
               <SpotsMap
                 spots={filteredSpots}
+                marks={marks}
                 region={region}
                 onRegionChange={setRegion}
                 userCoords={location.coords}
@@ -224,6 +252,8 @@ export default function NearbySpotsScreen() {
                 <SpotCard
                   spot={selectedSpot}
                   distanceKm={distanceKm(origin, spotLatLng(selectedSpot))}
+                  mark={markOf(marks, selectedSpot.id)}
+                  onChangeMark={(next) => changeMark(selectedSpot, next, 'map_card')}
                   onClose={() => setSelectedSpot(null)}
                 />
               )}
@@ -231,8 +261,10 @@ export default function NearbySpotsScreen() {
           ) : (
             <SpotList
               items={sortedItems}
-              maxCount={LIST_MAX_COUNT}
-              radiusKm={LIST_RADIUS_KM}
+              marks={marks}
+              onChangeMark={(spot, next) => changeMark(spot, next, 'list_row')}
+              maxCount={listMaxCount}
+              radiusKm={listRadiusKm}
             />
           )}
         </View>

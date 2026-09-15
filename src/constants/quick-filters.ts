@@ -1,8 +1,10 @@
 import type { SpotV1 } from '@/api/spots';
+import { isWantToVisit, markOf, type SpotMarks } from '@/constants/spot-marks';
 
 // クイック絞り込み: 1タップの固定条件。しきい値はtns-webのクイックフィルタと
 // 数値・意味を揃える(風呂・標高はモバイル発の語彙)。詳細はCONTEXT.md参照
 export type QuickFilterKey =
+  | 'want_to_visit'
   | 'free'
   | 'toilet_near'
   | 'bath_near'
@@ -20,6 +22,7 @@ export const BathNearDistanceM = 1000;
 export const MinElevationM = 500;
 
 export const QuickFilterLabels: Record<QuickFilterKey, string> = {
+  want_to_visit: '♡ 行きたい',
   free: '無料',
   toilet_near: 'トイレ300m以内',
   bath_near: '風呂1km以内',
@@ -28,6 +31,7 @@ export const QuickFilterLabels: Record<QuickFilterKey, string> = {
 };
 
 export const AllQuickFilterKeys: QuickFilterKey[] = [
+  'want_to_visit',
   'free',
   'toilet_near',
   'bath_near',
@@ -36,8 +40,14 @@ export const AllQuickFilterKeys: QuickFilterKey[] = [
 ];
 
 // 確認済み絞り込み: 距離系は「確認済みで条件内」だけを通し、距離不明は除外する。
-// 「情報は隠さない」原則はデフォルト表示の話で、ユーザー自身の絞り込みは対象外
-export const QuickFilterPredicates: Record<QuickFilterKey, (spot: SpotV1) => boolean> = {
+// 「情報は隠さない」原則はデフォルト表示の話で、ユーザー自身の絞り込みは対象外。
+// 「行きたい」だけはスポットの属性ではなくユーザーが付けた印に対する条件
+// (「また行きたい」も含む)
+export const QuickFilterPredicates: Record<
+  QuickFilterKey,
+  (spot: SpotV1, marks: SpotMarks) => boolean
+> = {
+  want_to_visit: (spot, marks) => isWantToVisit(markOf(marks, spot.id)),
   free: (spot) => spot.isFree,
   toilet_near: (spot) =>
     spot.distanceToToilet != null && spot.distanceToToilet <= ToiletNearDistanceM,

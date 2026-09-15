@@ -1,11 +1,12 @@
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 
 import type { SpotV1 } from '@/api/spots';
+import { SpotActions } from '@/components/spot-actions';
 import { SpotSummary } from '@/components/spot-summary';
 import { ThemedText } from '@/components/themed-text';
+import { markOf, type SpotMarks, type SpotMarkState } from '@/constants/spot-marks';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { openSpotWeb } from '@/lib/referral';
 
 export type SpotWithDistance = {
   spot: SpotV1;
@@ -14,14 +15,17 @@ export type SpotWithDistance = {
 
 type Props = {
   items: SpotWithDistance[];
-  // 件数上限(近い順にこの件数で頭打ち)。ヘッダー表記に使う
+  marks: SpotMarks;
+  onChangeMark: (spot: SpotV1, next: SpotMarkState) => void;
+  // 件数上限(近い順にこの件数で頭打ち)。ヘッダー表記に使う。未指定なら上限なし
   maxCount?: number;
   // 距離上限(km)。件数が上限未満のときは距離が実際の制約になるため表記する
   radiusKm?: number;
 };
 
-// 近い順の一覧。行タップで即Web誘導(アプリ内詳細画面は持たない)
-export function SpotList({ items, maxCount, radiusKm }: Props) {
+// 近い順の一覧。行自体はタップしても何も起きず、「詳細を見る」でだけWeb誘導する
+// (印ボタンとの押し間違いで意図しないWeb遷移を起こさないため。アプリ内詳細画面は持たない)
+export function SpotList({ items, marks, onChangeMark, maxCount, radiusKm }: Props) {
   const theme = useTheme();
   const total = items.length;
   // 件数上限に達しているときは「近い順50件」、そうでなければ距離上限が実際の制約
@@ -48,24 +52,21 @@ export function SpotList({ items, maxCount, radiusKm }: Props) {
         ) : null
       }
       renderItem={({ item, index }) => (
-        <Pressable
-          onPress={() => openSpotWeb(item.spot, 'list_row', item.distanceKm)}
-          style={({ pressed }) => [
-            styles.row,
-            { borderBottomColor: theme.backgroundElement },
-            pressed && { backgroundColor: theme.backgroundElement },
-          ]}
-        >
+        <View style={[styles.row, { borderBottomColor: theme.backgroundElement }]}>
           <ThemedText type="small" themeColor="textSecondary" style={styles.rank}>
             {`${index + 1}/${total}`}
           </ThemedText>
           <View style={styles.rowBody}>
             <SpotSummary spot={item.spot} distanceKm={item.distanceKm} />
+            <SpotActions
+              spot={item.spot}
+              distanceKm={item.distanceKm}
+              origin="list_row"
+              mark={markOf(marks, item.spot.id)}
+              onChangeMark={(next) => onChangeMark(item.spot, next)}
+            />
           </View>
-          <ThemedText type="small" themeColor="textSecondary">
-            ›
-          </ThemedText>
-        </Pressable>
+        </View>
       )}
       ListEmptyComponent={
         <View style={styles.empty}>
@@ -86,7 +87,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two + Spacing.one,
@@ -97,6 +98,7 @@ const styles = StyleSheet.create({
   },
   rowBody: {
     flex: 1,
+    gap: Spacing.two,
   },
   empty: {
     alignItems: 'center',

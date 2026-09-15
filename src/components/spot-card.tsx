@@ -1,21 +1,24 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { SpotV1 } from '@/api/spots';
+import { SpotActions } from '@/components/spot-actions';
 import { SpotSummary } from '@/components/spot-summary';
 import { ThemedText } from '@/components/themed-text';
+import type { SpotMarkState } from '@/constants/spot-marks';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { openSpotWeb } from '@/lib/referral';
 
 type Props = {
   spot: SpotV1;
   distanceKm: number;
+  mark: SpotMarkState;
+  onChangeMark: (next: SpotMarkState) => void;
   onClose: () => void;
 };
 
 // 地図でマーカー選択時に出すスポットカード。
 // 誤タップで即ブラウザに飛ばさず、「詳細を見る」でWeb誘導する
-export function SpotCard({ spot, distanceKm, onClose }: Props) {
+export function SpotCard({ spot, distanceKm, mark, onChangeMark, onClose }: Props) {
   const theme = useTheme();
 
   return (
@@ -28,15 +31,13 @@ export function SpotCard({ spot, distanceKm, onClose }: Props) {
           <ThemedText themeColor="textSecondary">✕</ThemedText>
         </Pressable>
       </View>
-      <Pressable
-        onPress={() => openSpotWeb(spot, 'map_card', distanceKm)}
-        style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-        accessibilityRole="button"
-      >
-        <ThemedText type="smallBold" style={styles.buttonLabel}>
-          詳細を見る
-        </ThemedText>
-      </Pressable>
+      <SpotActions
+        spot={spot}
+        distanceKm={distanceKm}
+        origin="map_card"
+        mark={mark}
+        onChangeMark={onChangeMark}
+      />
     </View>
   );
 }
@@ -63,17 +64,5 @@ const styles = StyleSheet.create({
   },
   summary: {
     flex: 1,
-  },
-  button: {
-    backgroundColor: '#208AEF',
-    borderRadius: Spacing.two,
-    alignItems: 'center',
-    paddingVertical: Spacing.two + Spacing.one,
-  },
-  buttonPressed: {
-    opacity: 0.8,
-  },
-  buttonLabel: {
-    color: '#ffffff',
   },
 });
