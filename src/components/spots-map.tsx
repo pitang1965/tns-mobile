@@ -20,6 +20,9 @@ type Props = {
   onRegionChange: (region: Region) => void;
   userCoords: LatLng | null;
   onSelectSpot: (spot: SpotV1 | null) => void;
+  // 並び替え基準(CONTEXT.md)が地図中心のときだけ中心マーカーを見せる。
+  // 現在地の印は既存のshowsUserLocationが担うため、ここでは地図中心専用
+  usingMapCenter: boolean;
 };
 
 type ClusterData = Extract<MapItem, { kind: 'cluster' }>;
@@ -345,6 +348,7 @@ export function SpotsMap({
   onRegionChange,
   userCoords,
   onSelectSpot,
+  usingMapCenter,
 }: Props) {
   const mapRef = useRef<MapView>(null);
   const lastRegionUpdateRef = useRef(0);
@@ -382,42 +386,57 @@ export function SpotsMap({
   };
 
   return (
-    <MapView
-      ref={mapRef}
-      style={styles.map}
-      initialRegion={region}
-      // ジェスチャー完了時だけでなくズーム/パン中も間引きつつ再計算する。
-      // 完了時のみだと、ピンチ中は古いズーム用の◯が貼り付いたままになり、
-      // 指を離した瞬間に中間段階を飛ばして最終形へジャンプして見える
-      onRegionChange={(nextRegion) => {
-        const now = Date.now();
-        if (now - lastRegionUpdateRef.current > 200) {
-          lastRegionUpdateRef.current = now;
-          onRegionChange(nextRegion);
-        }
-      }}
-      onRegionChangeComplete={onRegionChange}
-      showsUserLocation
-      showsMyLocationButton
-      toolbarEnabled={false}
-      onPress={(event) => {
-        // Androidではマーカータップでもmap onPressが発火するため区別する
-        if (event.nativeEvent.action !== 'marker-press') {
-          onSelectSpot(null);
-        }
-      }}
-    >
-      <SpotMarkerPool
-        spots={spotItems.map((item) => item.spot)}
-        onPress={onSelectSpot}
-      />
-      <ClusterMarkerPool clusters={clusters} onPress={onClusterPress} />
-      <MarkMarkerPool spots={spots} marks={marks} onPress={onSelectSpot} />
-    </MapView>
+    <View style={styles.mapContainer}>
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        initialRegion={region}
+        // ジェスチャー完了時だけでなくズーム/パン中も間引きつつ再計算する。
+        // 完了時のみだと、ピンチ中は古いズーム用の◯が貼り付いたままになり、
+        // 指を離した瞬間に中間段階を飛ばして最終形へジャンプして見える
+        onRegionChange={(nextRegion) => {
+          const now = Date.now();
+          if (now - lastRegionUpdateRef.current > 200) {
+            lastRegionUpdateRef.current = now;
+            onRegionChange(nextRegion);
+          }
+        }}
+        onRegionChangeComplete={onRegionChange}
+        showsUserLocation
+        showsMyLocationButton
+        toolbarEnabled={false}
+        onPress={(event) => {
+          // Androidではマーカータップでもmap onPressが発火するため区別する
+          if (event.nativeEvent.action !== 'marker-press') {
+            onSelectSpot(null);
+          }
+        }}
+      >
+        <SpotMarkerPool
+          spots={spotItems.map((item) => item.spot)}
+          onPress={onSelectSpot}
+        />
+        <ClusterMarkerPool clusters={clusters} onPress={onClusterPress} />
+        <MarkMarkerPool spots={spots} marks={marks} onPress={onSelectSpot} />
+      </MapView>
+      {/* 地図上の座標(Marker)ではなく画面中央への重ね表示にする。regionはクラスタ
+          再計算のため間引き更新(200ms)しているため、Marker座標をregionに追従させると
+          パン中に遅れて見える。画面中央固定ならReactの状態を経由せず常に正確 */}
+      {usingMapCenter && (
+        <View style={styles.centerMarkerOverlay} pointerEvents="none">
+          <View style={styles.centerMarker}>
+            <View style={styles.centerMarkerDot} />
+          </View>
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  mapContainer: {
+    flex: 1,
+  },
   map: {
     flex: 1,
   },
@@ -451,5 +470,30 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     fontSize: 12,
+  },
+  centerMarkerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centerMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#3A3A3C',
+    backgroundColor: 'rgba(58, 58, 60, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centerMarkerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#3A3A3C',
   },
 });

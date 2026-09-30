@@ -9,8 +9,9 @@ import { InfoScreen } from '@/components/info-screen';
 import { NoticeBanner } from '@/components/notice-banner';
 import { QuickFilterChips } from '@/components/quick-filter-chips';
 import { SegmentToggle, type ViewMode } from '@/components/segment-toggle';
+import { SortOriginToggle } from '@/components/sort-origin-toggle';
 import { SpotCard } from '@/components/spot-card';
-import { SpotList } from '@/components/spot-list';
+import { SpotList, spotListCountLabel } from '@/components/spot-list';
 import { SpotsMap } from '@/components/spots-map';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -24,6 +25,7 @@ import { countMarks, markOf, type SpotMarkState } from '@/constants/spot-marks';
 import { AllSpotTypes } from '@/constants/spot-types';
 import { Spacing } from '@/constants/theme';
 import { useCurrentLocation } from '@/hooks/use-current-location';
+import { useSortOrigin, type SortOrigin } from '@/hooks/use-sort-origin';
 import { useSpotMarks } from '@/hooks/use-spot-marks';
 import { useSpots } from '@/hooks/use-spots';
 import { useVehicleHeight } from '@/hooks/use-vehicle-height';
@@ -60,15 +62,21 @@ export default function NearbySpotsScreen() {
   const { settings: heightSettings, setSettings: setHeightSettings } = useVehicleHeight();
   // スポットの印は端末内だけに永続化する(ADR-0002)
   const { marks, setMark } = useSpotMarks();
+  // 並び替え基準(CONTEXT.md): 現在地から/地図中心からのユーザー選択。次回起動後も引き継ぐ
+  const { sortOrigin, setSortOrigin } = useSortOrigin();
   const [region, setRegion] = useState<Region>(JAPAN_REGION);
   const [selectedSpot, setSelectedSpot] = useState<SpotV1 | null>(null);
 
-  // 地図中心基準: 現在地が使えないときは地図の中心を「近い順」の起点にする
-  const usingMapCenter = location.status === 'unavailable';
   const coords = location.coords;
+  const currentLocationAvailable = coords != null;
+  // 地図中心基準: 現在地が使えない(強制)か、ユーザーが自ら地図中心を選んだ(手動)状態
+  const usingMapCenter = !currentLocationAvailable || sortOrigin === 'map_center';
   const origin = useMemo<LatLng>(
-    () => coords ?? { latitude: region.latitude, longitude: region.longitude },
-    [coords, region.latitude, region.longitude],
+    () =>
+      !usingMapCenter && coords
+        ? coords
+        : { latitude: region.latitude, longitude: region.longitude },
+    [usingMapCenter, coords, region.latitude, region.longitude],
   );
 
   const filteredSpots = useMemo(() => {
@@ -155,6 +163,11 @@ export default function NearbySpotsScreen() {
     track({ name: 'filter_changed', properties: { types: selectedTypes, quick: keys } });
   };
 
+  const changeSortOrigin = (next: SortOrigin) => {
+    setSortOrigin(next);
+    track({ name: 'sort_origin_changed', properties: { sort_origin: next } });
+  };
+
   const changeHeightSettings = (next: VehicleHeightSettings) => {
     setHeightSettings(next);
     setSelectedSpot(null);
@@ -208,7 +221,7 @@ export default function NearbySpotsScreen() {
                 text={`オフライン: ${staleDays}日前に取得したデータを表示中`}
               />
             )}
-            {usingMapCenter && (
+            {!currentLocationAvailable && (
               <NoticeBanner
                 tone="info"
                 text="現在地が使えないため、地図の中心から近い順に表示します"
@@ -247,6 +260,7 @@ export default function NearbySpotsScreen() {
                 onRegionChange={setRegion}
                 userCoords={location.coords}
                 onSelectSpot={selectSpot}
+                usingMapCenter={usingMapCenter}
               />
               {selectedSpot && (
                 <SpotCard
@@ -259,13 +273,23 @@ export default function NearbySpotsScreen() {
               )}
             </>
           ) : (
-            <SpotList
-              items={sortedItems}
-              marks={marks}
-              onChangeMark={(spot, next) => changeMark(spot, next, 'list_row')}
-              maxCount={listMaxCount}
-              radiusKm={listRadiusKm}
-            />
+            <>
+              <View style={styles.listHeader}>
+                <SortOriginToggle
+                  value={sortOrigin}
+                  onChange={changeSortOrigin}
+                  currentLocationAvailable={currentLocationAvailable}
+                />
+                <ThemedText type="small" themeColor="textSecondary">
+                  {spotListCountLabel(sortedItems.length, listMaxCount, listRadiusKm)}
+                </ThemedText>
+              </View>
+              <SpotList
+                items={sortedItems}
+                marks={marks}
+                onChangeMark={(spot, next) => changeMark(spot, next, 'list_row')}
+              />
+            </>
           )}
         </View>
       </SafeAreaView>
@@ -291,6 +315,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: Spacing.three,
     paddingBottom: Spacing.two,
+  },
+  listHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
   },
   content: {
     flex: 1,

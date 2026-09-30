@@ -43,6 +43,10 @@ type AnalyticsEvent =
       name: 'vehicle_height_changed';
       properties: { vehicle_height: number | null; include_unknown: boolean };
     }
+  | {
+      name: 'sort_origin_changed';
+      properties: { sort_origin: 'current' | 'map_center' };
+    }
   | { name: 'spot_card_opened'; properties: SpotEventProps }
   | {
       name: 'spot_web_referral';
