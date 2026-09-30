@@ -424,6 +424,9 @@ export function SpotsMap({
           パン中に遅れて見える。画面中央固定ならReactの状態を経由せず常に正確 */}
       {usingMapCenter && (
         <View style={styles.centerMarkerOverlay} pointerEvents="none">
+          {/* 半透明の重ねだと暗い地図(海など)に溶けてグレーに見えるため不透明にする。
+              白地に黒枠で明るい地図タイル上の輪郭を保ちつつ、不透明な白自体が
+              暗い地図タイル上でもはっきり浮くようにする */}
           <View style={styles.centerMarker}>
             <View style={styles.centerMarkerDot} />
           </View>
@@ -481,19 +484,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   centerMarker: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     borderWidth: 2,
-    borderColor: '#3A3A3C',
-    backgroundColor: 'rgba(58, 58, 60, 0.15)',
+    borderColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 4,
   },
   centerMarkerDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#3A3A3C',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#00C853',
   },
 });
