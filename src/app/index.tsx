@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { spotEventProps, track, type ReferralOrigin } from '@/analytics/analytics';
 import type { SpotType, SpotV1 } from '@/api/spots';
+import { FilterSection } from '@/components/filter-section';
 import { InfoScreen } from '@/components/info-screen';
 import { NoticeBanner } from '@/components/notice-banner';
 import { QuickFilterChips } from '@/components/quick-filter-chips';
@@ -98,12 +99,21 @@ export default function NearbySpotsScreen() {
   const listRadiusKm = wantToVisitOnly ? undefined : LIST_RADIUS_KM;
   const listMaxCount = wantToVisitOnly ? undefined : LIST_MAX_COUNT;
 
+  // 種別(減らす方向)とクイック/車高(増やす方向の絞り込み)は意味が違うため、
+  // サマリーも分けて表示する(「外すと増える/減る」が混在して分かりにくいとのフィードバック)
+  const typeSummary =
+    selectedTypes.length === AllSpotTypes.length
+      ? '種別(全て)'
+      : `種別(${selectedTypes.length})`;
+  const narrowingCount =
+    quickFilters.length + (heightSettings.vehicleHeight != null ? 1 : 0);
+  const narrowingSummary =
+    narrowingCount > 0 ? `絞り込み(${narrowingCount})` : '絞り込み(なし)';
+  const filterSectionSummary = `${typeSummary}　${narrowingSummary}`;
+
   // 絞り込みが効いている状態で地図の表示範囲内が0件のときだけ知らせる。
   // 空の地図が「壊れた・データがない」と誤解されるのを防ぐ(一覧には既存の空表示がある)
-  const filtersActive =
-    quickFilters.length > 0 ||
-    selectedTypes.length < AllSpotTypes.length ||
-    heightSettings.vehicleHeight != null;
+  const filtersActive = selectedTypes.length < AllSpotTypes.length || narrowingCount > 0;
   const emptyInRegion = useMemo(() => {
     if (!filtersActive) {
       return false;
@@ -203,14 +213,16 @@ export default function NearbySpotsScreen() {
         {/* 情報タブは静的リンク集なので、絞り込みチップやスポット系の通知は出さない */}
         {viewMode !== 'info' && (
           <>
-            <TypeFilterChips selected={selectedTypes} onChange={changeTypes} />
-            <QuickFilterChips selected={quickFilters} onChange={changeQuickFilters} />
-            <View style={styles.heightFilterRow}>
-              <VehicleHeightFilter
-                settings={heightSettings}
-                onChange={changeHeightSettings}
-              />
-            </View>
+            <FilterSection summary={filterSectionSummary}>
+              <TypeFilterChips selected={selectedTypes} onChange={changeTypes} />
+              <QuickFilterChips selected={quickFilters} onChange={changeQuickFilters} />
+              <View style={styles.heightFilterRow}>
+                <VehicleHeightFilter
+                  settings={heightSettings}
+                  onChange={changeHeightSettings}
+                />
+              </View>
+            </FilterSection>
 
             {viewMode === 'map' && !isLoading && !loadFailed && emptyInRegion && (
               <NoticeBanner tone="info" text="条件に合うスポットがこの範囲にありません" />
