@@ -273,6 +273,7 @@ export default function NearbySpotsScreen() {
                 userCoords={location.coords}
                 onSelectSpot={selectSpot}
                 usingMapCenter={usingMapCenter}
+                hasSelectedSpot={selectedSpot != null}
               />
               {selectedSpot && (
                 <SpotCard

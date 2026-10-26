@@ -23,6 +23,9 @@ type Props = {
   // 並び替え基準(CONTEXT.md)が地図中心のときだけ中心マーカーを見せる。
   // 現在地の印は既存のshowsUserLocationが担うため、ここでは地図中心専用
   usingMapCenter: boolean;
+  // ピンタップでスポットカードを開いている間は、タップしたピンが画面中央に
+  // 来て中心マーカーに隠れることがあるため、中心マーカーを一時的に隠す
+  hasSelectedSpot: boolean;
 };
 
 type ClusterData = Extract<MapItem, { kind: 'cluster' }>;
@@ -349,6 +352,7 @@ export function SpotsMap({
   userCoords,
   onSelectSpot,
   usingMapCenter,
+  hasSelectedSpot,
 }: Props) {
   const mapRef = useRef<MapView>(null);
   const lastRegionUpdateRef = useRef(0);
@@ -414,7 +418,9 @@ export function SpotsMap({
         }}
       >
         <SpotMarkerPool
-          spots={spotItems.map((item) => item.spot)}
+          // 印付きスポットはMarkMarkerPoolのバッジだけを見せ、
+          // アンカー位置の違う色ピンとの中途半端な重なりを避ける
+          spots={spotItems.map((item) => item.spot).filter((spot) => marks[spot.id] == null)}
           onPress={onSelectSpot}
         />
         <ClusterMarkerPool clusters={clusters} onPress={onClusterPress} />
@@ -423,7 +429,7 @@ export function SpotsMap({
       {/* 地図上の座標(Marker)ではなく画面中央への重ね表示にする。regionはクラスタ
           再計算のため間引き更新(200ms)しているため、Marker座標をregionに追従させると
           パン中に遅れて見える。画面中央固定ならReactの状態を経由せず常に正確 */}
-      {usingMapCenter && (
+      {usingMapCenter && !hasSelectedSpot && (
         <View style={styles.centerMarkerOverlay} pointerEvents="none">
           {/* 半透明の重ねだと暗い地図(海など)に溶けてグレーに見えるため不透明にする。
               白地に黒枠で明るい地図タイル上の輪郭を保ちつつ、不透明な白自体が
