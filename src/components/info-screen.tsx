@@ -15,6 +15,7 @@ import { useTheme } from '@/hooks/use-theme';
 // リストに混ぜず上部の独立カードとして目立たせる(診断=引き込む/投稿=貢献)
 type FeatureCard = {
   target: InfoLinkTarget;
+  icon: string;
   label: string;
   description: string;
   url: string;
@@ -23,36 +24,42 @@ type FeatureCard = {
 const featureCards: FeatureCard[] = [
   {
     target: 'shindan',
+    icon: '✨',
     label: '車中泊スタイル診断',
     description: '10問であなたに合う場所が見つかる',
     url: `${WEB_BASE_URL}/shachu-haku/shindan?utm_source=app&utm_medium=info`,
   },
   {
     target: 'submit',
+    icon: '📝',
     label: '車中泊スポット情報の投稿',
     description: '知っている場所を教えてください',
     url: `${WEB_BASE_URL}/shachu-haku/submit?utm_source=app&utm_medium=info`,
   },
 ];
 
-const links: { target: InfoLinkTarget; label: string; url: string }[] = [
+const links: { target: InfoLinkTarget; icon: string; label: string; url: string }[] = [
   {
     target: 'updates',
+    icon: '🔔',
     label: 'お知らせ(更新情報)',
     url: `${WEB_BASE_URL}/updates?utm_source=app&utm_medium=info`,
   },
   {
     target: 'privacy_policy',
+    icon: '🔒',
     label: 'プライバシーポリシー',
     url: `${WEB_BASE_URL}/privacy/app`,
   },
   {
     target: 'contact',
+    icon: '✉️',
     label: 'お問い合わせ',
     url: `${WEB_BASE_URL}/contact`,
   },
   {
     target: 'website',
+    icon: '🏠',
     label: '車旅のしおり トップページ',
     url: `${WEB_BASE_URL}/?utm_source=app&utm_medium=info`,
   },
@@ -90,7 +97,9 @@ export function InfoScreen() {
             style={[styles.featureCard, { backgroundColor: theme.backgroundSelected }]}
           >
             <View style={styles.featureText}>
-              <ThemedText type="smallBold">{card.label}</ThemedText>
+              <ThemedText type="smallBold">
+                {card.icon} {card.label}
+              </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 {card.description}
               </ThemedText>
@@ -114,7 +123,9 @@ export function InfoScreen() {
               },
             ]}
           >
-            <ThemedText>{link.label}</ThemedText>
+            <ThemedText>
+              {link.icon} {link.label}
+            </ThemedText>
             <ThemedText themeColor="textSecondary">↗</ThemedText>
           </Pressable>
         ))}
