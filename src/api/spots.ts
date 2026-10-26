@@ -45,14 +45,26 @@ export const SPOTS_API_URL = `${WEB_BASE_URL}/api/v1/spots`;
 // 未設定(ローカル開発など)ならヘッダー無しで送る。
 const SPOTS_API_KEY = process.env.EXPO_PUBLIC_SPOTS_API_KEY;
 
+// タイムアウト無しだと、接続はできるが応答が返らない回線で読み込み中のまま
+// 固まる(再試行ボタンはfetchが失敗するまで出せない)。10秒で打ち切り、
+// 既存の失敗時フォールバック(キャッシュ表示・再試行導線)に合流させる
+const FETCH_TIMEOUT_MS = 10_000;
+
 export async function fetchSpots(): Promise<SpotsV1Response> {
-  const res = await fetch(SPOTS_API_URL, {
-    headers: SPOTS_API_KEY ? { 'x-api-key': SPOTS_API_KEY } : undefined,
-  });
-  if (!res.ok) {
-    throw new Error(`spots API failed: ${res.status}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(SPOTS_API_URL, {
+      headers: SPOTS_API_KEY ? { 'x-api-key': SPOTS_API_KEY } : undefined,
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      throw new Error(`spots API failed: ${res.status}`);
+    }
+    return (await res.json()) as SpotsV1Response;
+  } finally {
+    clearTimeout(timeout);
   }
-  return (await res.json()) as SpotsV1Response;
 }
 
 // Web誘導先。アプリ内に詳細画面は作らない(誘導ファネル設計)
