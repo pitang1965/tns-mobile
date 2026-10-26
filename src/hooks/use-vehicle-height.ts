@@ -13,15 +13,12 @@ const STORAGE_KEY = 'vehicle-height-settings-v1';
 export type UseVehicleHeightResult = {
   settings: VehicleHeightSettings;
   setSettings: (next: VehicleHeightSettings) => void;
-  // 復元完了フラグ。復元前に保存して既定値で上書きするのを防ぐ
-  loaded: boolean;
 };
 
 export function useVehicleHeight(): UseVehicleHeightResult {
   const [settings, setSettingsState] = useState<VehicleHeightSettings>(
     DefaultVehicleHeightSettings,
   );
-  const [loaded, setLoaded] = useState(false);
 
   // 起動時に保存済みの設定を復元
   useEffect(() => {
@@ -39,10 +36,6 @@ export function useVehicleHeight(): UseVehicleHeightResult {
         }
       } catch {
         // 復元失敗は既定値のまま(致命的ではない)
-      } finally {
-        if (!cancelled) {
-          setLoaded(true);
-        }
       }
     })();
     return () => {
@@ -57,5 +50,5 @@ export function useVehicleHeight(): UseVehicleHeightResult {
     });
   }, []);
 
-  return { settings, setSettings, loaded };
+  return { settings, setSettings };
 }
