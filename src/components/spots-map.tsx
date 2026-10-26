@@ -404,6 +404,7 @@ export function SpotsMap({
         onRegionChangeComplete={onRegionChange}
         showsUserLocation
         showsMyLocationButton
+        zoomControlEnabled
         toolbarEnabled={false}
         onPress={(event) => {
           // Androidではマーカータップでもmap onPressが発火するため区別する
