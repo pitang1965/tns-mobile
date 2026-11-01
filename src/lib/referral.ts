@@ -15,7 +15,8 @@ export async function openSpotWeb(
     name: 'spot_web_referral',
     properties: { ...spotEventProps(spot, distanceKm), origin },
   });
-  // ブラウザを開く前に数える(戻ってきたときの検知を開く前に仕掛けるため)
-  await countReferralForReview();
   await WebBrowser.openBrowserAsync(spotWebUrl(spot.id));
+  // 開けたときだけ数える(失敗時にレビュー依頼の待ち受けが残り、無関係な瞬間に出るのを防ぐ)。
+  // shortcut: iOS は閉じた後に解決するため戻りを検知できない、iOSネイティブ対応時に見直す
+  await countReferralForReview();
 }

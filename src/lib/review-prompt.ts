@@ -29,7 +29,7 @@ function onNextReturn(fn: () => void): void {
   });
 }
 
-// Web誘導の直前に呼ぶ。回数は端末内だけで数える(この機能の入った版から数え始める)
+// Web誘導でブラウザを開けた直後に呼ぶ。回数は端末内だけで数える(この機能の入った版から数え始める)
 export async function countReferralForReview(): Promise<void> {
   try {
     const count = Number((await AsyncStorage.getItem(REFERRAL_COUNT_KEY)) ?? '0') + 1;

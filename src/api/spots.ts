@@ -61,7 +61,12 @@ export async function fetchSpots(): Promise<SpotsV1Response> {
     if (!res.ok) {
       throw new Error(`spots API failed: ${res.status}`);
     }
-    return (await res.json()) as SpotsV1Response;
+    const json = await res.json();
+    // 200でも形が違えば失敗扱いにし、正常なキャッシュを壊れたデータで上書きしない
+    if (!Array.isArray(json?.spots)) {
+      throw new Error('bad spots payload');
+    }
+    return json as SpotsV1Response;
   } finally {
     clearTimeout(timeout);
   }
