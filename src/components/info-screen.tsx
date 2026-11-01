@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { track, type InfoLinkTarget } from '@/analytics/analytics';
 import { WEB_BASE_URL } from '@/api/spots';
@@ -38,7 +38,16 @@ const featureCards: FeatureCard[] = [
   },
 ];
 
-const links: { target: InfoLinkTarget; icon: string; label: string; url: string }[] = [
+type InfoLink = {
+  target: InfoLinkTarget;
+  icon: string;
+  label: string;
+  url: string;
+  // アプリ内ブラウザでなく外部アプリ(Playストア)で開く
+  external?: boolean;
+};
+
+const links: InfoLink[] = [
   {
     target: 'updates',
     icon: '🔔',
@@ -58,6 +67,14 @@ const links: { target: InfoLinkTarget; icon: string; label: string; url: string 
     url: `${WEB_BASE_URL}/contact`,
   },
   {
+    // 自分から評価したい人の取りこぼし防止。ボタンからの requestReview は非推奨なのでストアを直接開く
+    target: 'rate_app',
+    icon: '⭐',
+    label: 'アプリを評価する',
+    url: 'https://play.google.com/store/apps/details?id=club.over40web.tabi.spots',
+    external: true,
+  },
+  {
     target: 'website',
     icon: '🏠',
     label: '車旅のしおり トップページ',
@@ -65,12 +82,9 @@ const links: { target: InfoLinkTarget; icon: string; label: string; url: string 
   },
 ];
 
-async function openLink(link: {
-  target: InfoLinkTarget;
-  url: string;
-}): Promise<void> {
+async function openLink(link: Pick<InfoLink, 'target' | 'url' | 'external'>): Promise<void> {
   track({ name: 'info_link_opened', properties: { target: link.target } });
-  await WebBrowser.openBrowserAsync(link.url);
+  await (link.external ? Linking.openURL(link.url) : WebBrowser.openBrowserAsync(link.url));
 }
 
 export function InfoScreen() {

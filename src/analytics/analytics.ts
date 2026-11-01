@@ -22,7 +22,10 @@ export type InfoLinkTarget =
   | 'updates'
   | 'privacy_policy'
   | 'contact'
-  | 'website';
+  | 'website'
+  | 'rate_app';
+
+export type ReviewPromptTrigger = 'referral_10' | 'referral_30' | 'mark_3';
 
 type SpotEventProps = {
   spot_id: string;
@@ -65,7 +68,9 @@ type AnalyticsEvent =
         again_count: number;
       };
     }
-  | { name: 'location_permission_result'; properties: { granted: boolean } };
+  | { name: 'location_permission_result'; properties: { granted: boolean } }
+  // 実際に表示されたか・評価されたかはアプリから分からないため、「依頼した」事実だけを数える
+  | { name: 'review_prompt_requested'; properties: { trigger: ReviewPromptTrigger } };
 
 export function track(event: AnalyticsEvent): void {
   posthog?.capture(event.name, event.properties);

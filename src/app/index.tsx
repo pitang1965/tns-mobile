@@ -32,6 +32,7 @@ import { useSpots } from '@/hooks/use-spots';
 import { useVehicleHeight } from '@/hooks/use-vehicle-height';
 import { distanceKm, type LatLng } from '@/lib/geo';
 import { spotPassesHeightFilter, type VehicleHeightSettings } from '@/lib/height-filter';
+import { maybeRequestReviewForMarks } from '@/lib/review-prompt';
 
 // 一覧は起点(現在地または地図中心)から近い順に上位 LIST_MAX_COUNT 件だけ表示する。
 // 距離フィルタは遠すぎる件を出さないためのバックストップ(通常は件数上限が先に効く)。
@@ -140,7 +141,8 @@ export default function NearbySpotsScreen() {
 
   const changeMark = (spot: SpotV1, next: SpotMarkState, markOrigin: ReferralOrigin) => {
     const from = markOf(marks, spot.id);
-    const counts = countMarks(setMark(spot.id, next));
+    const nextMarks = setMark(spot.id, next);
+    const counts = countMarks(nextMarks);
     // spot_id・都道府県・距離は送らない(ADR-0002)
     track({
       name: 'spot_mark_changed',
@@ -154,6 +156,10 @@ export default function NearbySpotsScreen() {
         again_count: counts.again,
       },
     });
+    // 印を外したときは前向きな瞬間ではないので依頼しない
+    if (next !== 'none') {
+      maybeRequestReviewForMarks(Object.keys(nextMarks).length);
+    }
   };
 
   const changeViewMode = (mode: ViewMode) => {
