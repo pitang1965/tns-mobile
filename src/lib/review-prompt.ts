@@ -19,10 +19,19 @@ async function requestReview(trigger: ReviewPromptTrigger): Promise<void> {
   await StoreReview.requestReview();
 }
 
+// ブラウザを開く途中の一瞬の復帰(中継Activity経由)を「戻ってきた」と誤認しないよう、離れていた時間で判定する
+const MIN_AWAY_MS = 3000;
+
 // Android の openBrowserAsync はブラウザを閉じるのを待たないため、アプリが前面に戻ったときに出す
 function onNextReturn(fn: () => void): void {
+  // ブラウザを開いた直後に登録するので「今離れ始めた」と見なす(登録前に background が来ていても取りこぼさない)
+  let leftAt = Date.now();
   const sub = AppState.addEventListener('change', (state) => {
-    if (state === 'active') {
+    if (state !== 'active') {
+      leftAt = Date.now();
+      return;
+    }
+    if (Date.now() - leftAt >= MIN_AWAY_MS) {
       sub.remove();
       fn();
     }
